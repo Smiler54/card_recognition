@@ -1,6 +1,6 @@
-# OpenCV Project
+# Poker PLO5 Card Recognition & Copy to Clipboard
 
-A basic OpenCV project that captures video from your webcam and displays it in real-time.
+A basic OpenCV project that captures poker game window from your screen and detects your cards and recognize them in real-time.
 
 ## Setup
 
@@ -22,11 +22,12 @@ Run the main script:
 python main.py
 ```
 
-- Press 'q' to quit the application
-- The program will display the video feed from your default webcam
+- Click [Start Capture] button.
+- The program will start to capture the Poker Game Window in real time.
+- And it will seperate multiple tables, detect each cards and recognize them. (such as "Kh 10h 10d 9c 3s")
 
 ## Features
 
-- Real-time video capture
-- Basic error handling
-- Clean resource management 
+- Real-time window capture
+- Seperate multiple tables
+- Match templates
