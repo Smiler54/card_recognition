@@ -5,8 +5,8 @@ from tkinter import filedialog
 from PIL import Image, ImageTk
 import pygetwindow
 import pyautogui
-import glob
-# from scipy.signal import find_peaks
+from matcher import Matcher
+import os
 
 # Set default image dimensions
 IMAGE_WIDTH = 800
@@ -64,9 +64,9 @@ def normalize(image):
     image = image[60:height, 0:width]
     height = height - 60
 
-    ratio = height / 800
+    ratio = height / 2000
     width = int(width / ratio)
-    height = 800
+    height = 2000
     # Resize the screenshot to a fixed height
     result = cv2.resize(np.array(image), (width, height))
     return result
@@ -157,8 +157,6 @@ def draw_rectangle(image, x, y, w, h, clip_width, clip_height):
         return image
     if w < h:
         return image
-    if w < clip_width / 3 and h < clip_height / 3:
-        return image
 
     result = image.copy()
     cv2.rectangle(result, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -185,13 +183,12 @@ def process_image(img):
     # Clip the image to the specified region
     clip = diff
     height, width = clip.shape[:2]
-    x_start = int(width / 2)
-    x_end = width
-    y_start = int(height * 3 / 4)
-    y_end = int(height * 7 / 8)
+    x_start = int(width * 0.55)
+    x_end = int(width * 0.9)
+    y_start = int(height * 0.75)
+    y_end = int(height * 0.88)
     
     clip = clip[y_start:y_end, x_start:x_end]
-    
     mask = binary_mask(clip)
 
     # Find contours in the binary image
@@ -205,32 +202,44 @@ def process_image(img):
     height, width = mask.shape[:2]
     mask = cv2.resize(mask, (width * 3, height * 3))
     # cv2.imshow('Combined Mask', mask)
-
-    clip_height, clip_width = mask.shape[:2]
-    x = int(x + x_start)
-    y = int(y + y_start)
-    result = draw_rectangle(img, x, y, w, h, clip_width, clip_height)
     
-    # template = cv2.imread('templates/d10.png')
-    # if template is not None and rectangle is not None:
-    #     height, width = template.shape[:2]
-    #     ratio = height / h
-    #     width = int(width / ratio)
-    #     height = int(h)
-    #     # Resize template to match detected rectangle size
-    #     template_resized = cv2.resize(template, (width, height))
-    #     # Perform template matching on the clipped region
-    #     match_result = cv2.matchTemplate(clip, template_resized, cv2.TM_CCOEFF_NORMED)
-    #     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(match_result)
-    #     threshold = 0.5
-    #     if max_val >= threshold:
-    #         match_x, match_y = max_loc
-    #         # Convert coordinates to original image space
-    #         abs_x = x_start + match_x
-    #         abs_y = y_start + match_y
-    #         # Draw rectangle on result image
-    #         cv2.rectangle(result, (abs_x, abs_y), (abs_x + width, abs_y + height), (0, 255, 255), -1)
-    #         print(f"Template matched at position: ({abs_x}, {abs_y}) with score: {max_val:.2f}")
+    result = img.copy()
+    # Load the template image
+    template_dir = './templates'
+    templates = [f for f in os.listdir(template_dir) if f.lower().endswith(('.png'))]
+    if len(templates) > 0:
+        clip_image = img[y_start:y_end, x_start:x_end]
+
+        for template in templates:
+            t_img = cv2.imread(os.path.join(template_dir, template))
+
+            m_height = clip_image.shape[0]
+            t_height, t_width = t_img.shape[:2]
+
+            ratio = t_height * 2 / m_height
+            t_width = int(t_width / ratio)
+            t_height = int(m_height // 2)
+            t_img = cv2.resize(t_img, (t_width, t_height))
+
+            matcher = Matcher(clip_image, t_img)
+            position, score, _ = matcher.match(method=cv2.TM_CCORR_NORMED)
+            # print(f"{template}: {position}, {score:.2f}")
+            if score > 0.9 and position[0] > 10 and position[1] > 10:
+                colors = [(255, 255, 255),
+                          (0, 255, 0),
+                          (255, 255, 0),
+                          (255, 0, 255),
+                          (0, 255, 255),
+                          (0, 0, 255),
+                          ]
+                index = (position[0] - x) // (t_width + 10);
+                result = cv2.rectangle(clip_image, (position[0], position[1]), (position[0] + t_img.shape[1], position[1] + t_img.shape[0]), colors[index], 1)
+                cv2.putText(result, template, (position[0], position[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[index], 1)
+
+    # clip_height, clip_width = mask.shape[:2]
+    # x = int(x + x_start)
+    # y = int(y + y_start)
+    # result = draw_rectangle(img, x, y, w, h, clip_width, clip_height)
     
     return result
 
@@ -355,20 +364,20 @@ def main():
     button_frame = tk.Frame(root)
     button_frame.pack(side=tk.TOP, pady=10)
     
-    # open_btn = tk.Button(button_frame, text="Open", command=open_image)
-    # open_btn.pack(side=tk.LEFT, padx=5)
+    open_btn = tk.Button(button_frame, text="Open", command=open_image)
+    open_btn.pack(side=tk.LEFT, padx=5)
     
-    # process_btn = tk.Button(button_frame, text="Process", command=process)
-    # process_btn.pack(side=tk.LEFT, padx=5)
+    process_btn = tk.Button(button_frame, text="Process", command=process)
+    process_btn.pack(side=tk.LEFT, padx=5)
 
     live_btn = tk.Button(button_frame, text="Start Capture", command=toggle_live_capture)
     live_btn.pack(side=tk.LEFT, padx=5)
 
-    # capture_btn = tk.Button(button_frame, text="Capture", command=capture)
-    # capture_btn.pack(side=tk.LEFT, padx=5)
+    capture_btn = tk.Button(button_frame, text="Capture", command=capture)
+    capture_btn.pack(side=tk.LEFT, padx=5)
 
-    # seperate_btn = tk.Button(button_frame, text="Seperate", command=seperate)
-    # seperate_btn.pack(side=tk.LEFT, padx=5)
+    seperate_btn = tk.Button(button_frame, text="Seperate", command=seperate)
+    seperate_btn.pack(side=tk.LEFT, padx=5)
 
     # Move image label to bottom
     image_frame.pack_forget()

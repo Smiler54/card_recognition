@@ -7,6 +7,7 @@ __pycache__/
 *.pyw
 *.pyz
 templates/
+templates/*.png
 *.png
 *.jpg
 *.jpeg
