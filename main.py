@@ -7,6 +7,7 @@ import pygetwindow
 import pyautogui
 from matcher import Matcher
 import os
+import clipboard
 
 # Set default image dimensions
 IMAGE_WIDTH = 800
@@ -348,7 +349,12 @@ def main():
                 processed, matches = process_image_with_names(image)
                 if processed is not None:
                     update_image_label(result_label, processed)
-                matched_names_var.set(", ".join([m['name'] for m in matches]))
+                card_names = [m['name'] for m in matches]
+                matched_names_var.set(", ".join(card_names))
+                # Copy to clipboard
+                clipboard.copy(", ".join(card_names))
+                # When use clipboard
+                # clipboard.paste()
             root.after(DELAY, update_live_capture)  # Update every 100 ms
 
     def toggle_live_capture():
